@@ -41,9 +41,9 @@ public final class Graylist extends JavaPlugin {
 
         final int isEnabled = config.isBoolean(enabled_path)
                 ? config.getBoolean(enabled_path)
-                    ? 1
-                    : 0
-                : 2;
+                    ? 1 // Is enabled
+                    : 0 // Isn't enabled
+                : 2; // Not set (use default)
 
         if (isEnabled == 0) {
             getLogger().log(Level.INFO, id + " tried to register itself but was disabled in the config.");
@@ -84,7 +84,10 @@ public final class Graylist extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        services.clear();
+        prefixes.clear();
+
+        default_service_id = null;
     }
 
     public static class ServiceAlreadyExists extends Exception {
