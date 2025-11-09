@@ -18,9 +18,21 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public abstract class Service {
-    public final String SERVICE_ID;
-    public final String SERVICE_NAME;
-    public final boolean DEFAULT_STATUS;
+    private final String SERVICE_ID;
+    private final String SERVICE_NAME;
+    private final boolean DEFAULT_STATUS;
+
+    public String getID() {
+        return SERVICE_ID;
+    }
+
+    public String getName() {
+        return SERVICE_NAME;
+    }
+
+    public boolean getDefaultStatus() {
+        return DEFAULT_STATUS;
+    }
 
     public Service(String id, boolean enabled) {
         this(id, id, enabled);

@@ -29,6 +29,8 @@ permissions:
       graylist: true
       graylist.command.list: true
       graylist.command.status: true
+      graylist.command.services: true
+
 commands:
   graylist:
     usage: /graylist [subcommand]
@@ -58,6 +60,10 @@ commands:
         description: Get the current whitelist state
         usage: /graylist status
         permission: graylist.command.status
+      services:
+        description: Get all available services
+        usage: /graylist services
+        permission: graylist.command.services
       reload:
         description: Reload the whitelist
         usage: /graylist reload

@@ -31,7 +31,7 @@ public final class Graylist extends JavaPlugin {
     private String default_service_id;
 
     public void registerService(Service service) throws ServiceAlreadyExists {
-        final String id = service.SERVICE_ID;
+        final String id = service.getID();
 
         if (services.containsKey(id))
             throw new ServiceAlreadyExists(id);
@@ -50,7 +50,7 @@ public final class Graylist extends JavaPlugin {
             return;
         }
 
-        if (isEnabled == 2 && !service.DEFAULT_STATUS) {
+        if (isEnabled == 2 && !service.getDefaultStatus()) {
             getLogger().log(Level.INFO, "Disabled service: " + id);
             return;
         }
@@ -203,6 +203,23 @@ public final class Graylist extends JavaPlugin {
                     })
             );
 
+            this.then(Commands.literal("services")
+                    .requires(ctx -> ctx.getSender().hasPermission("graylist.command.services"))
+                    .executes(ctx -> {
+                        String flatList = String.join(
+                                ", ",
+                                services.values().stream().map(Service::getName).toList()
+                        );
+
+                        ctx.getSource().getSender().sendRichMessage("There are <count> service(s) available: <list>",
+                                Placeholder.component("count", Component.text(services.keySet().toArray().length)),
+                                Placeholder.component("list", Component.text(flatList))
+                        );
+
+                        return Command.SINGLE_SUCCESS;
+                    })
+            );
+
             this.then(Commands.literal("on")
                     .requires(ctx -> ctx.getSender().hasPermission("graylist.command.on"))
                     .executes(ctx -> {
@@ -249,7 +266,7 @@ public final class Graylist extends JavaPlugin {
         }
 
         private Component setWhitelisted (Service service, UUID uuid, String name, boolean value) {
-            String prefix = getConfig().getString("services.configs." + service.SERVICE_ID + ".prefix");
+            String prefix = getConfig().getString("services.configs." + service.getID() + ".prefix");
 
             return service.setWhitelisted(
                     uuid,
@@ -265,7 +282,7 @@ public final class Graylist extends JavaPlugin {
         }
 
         private Component setWhitelisted (Service service, String name, boolean value) throws Service.UserNotFound {
-            String prefix = getConfig().getString("services.configs." + service.SERVICE_ID + ".prefix");
+            String prefix = getConfig().getString("services.configs." + service.getID() + ".prefix");
 
             String unlabeledName = prefix == null
                     ? name
@@ -298,7 +315,7 @@ public final class Graylist extends JavaPlugin {
 
             sender.sendRichMessage("Finding <name> via <service>...",
                     Placeholder.component("name", Component.text(name)),
-                    Placeholder.component("service", Component.text(service.SERVICE_NAME))
+                    Placeholder.component("service", Component.text(service.getName()))
             );
 
             try {
