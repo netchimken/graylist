@@ -1,9 +1,6 @@
 package dev.chimken.graylist.services;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
 import com.google.gson.*;
-import com.google.gson.stream.JsonWriter;
-import dev.chimken.graylist.Graylist;
 import dev.chimken.graylist.Util;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -15,7 +12,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 
 public abstract class Service {
     private final String SERVICE_ID;
