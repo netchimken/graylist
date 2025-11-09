@@ -1,0 +1,21 @@
+# ------------------
+# Graylist Config
+# ------------------
+
+## Service Configuration
+services:
+
+  ## Default service to use when a service isn't specified.
+  default: "mojang"
+
+  ## List of service configs
+  # By default, built-in services are disabled
+  configs:
+
+    floodgate:
+      #enabled: true
+      prefix: "."
+
+    elyby:
+      #enabled: true
+      #prefix:

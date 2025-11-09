@@ -1,0 +1,64 @@
+name: Graylist
+version: ${version}
+main: dev.chimken.graylist.Graylist
+api-version: '1.21'
+permissions:
+  graylist:
+    default: op
+
+  graylist.*:
+    description: Gives access to all Graylist commands
+    default: op
+    children:
+      graylist.manage: true
+      graylist.view: true
+
+  graylist.manage:
+    description: Gives access to all Graylist management commands
+    children:
+      graylist: true
+      graylist.command.add: true
+      graylist.command.remove: true
+      graylist.command.on: true
+      graylist.command.off: true
+      graylist.command.reload: true
+
+  graylist.view:
+    description: Gives access to all Graylist state viewing commands
+    children:
+      graylist: true
+      graylist.command.list: true
+      graylist.command.status: true
+commands:
+  graylist:
+    usage: /graylist [subcommand]
+    permission: graylist
+    children:
+      add:
+        description: Add a user to the whitelist
+        usage: /graylist add <name|uuid> <identifier> [service]
+        permission: graylist.command.add
+      remove:
+        description: Remove a user from the whitelist
+        usage: /graylist remove <name|uuid> <identifier> [service]
+        permission: graylist.command.remove
+      on:
+        description: Enable the whitelist
+        usage: /graylist on
+        permission: graylist.command.on
+      off:
+        description: Disable the whitelist
+        usage: /graylist off
+        permission: graylist.command.off
+      list:
+        description: List all whitelisted users
+        usage: /graylist list
+        permission: graylist.command.list
+      status:
+        description: Get the current whitelist state
+        usage: /graylist status
+        permission: graylist.command.status
+      reload:
+        description: Reload the whitelist
+        usage: /graylist reload
+        permission: graylist.command.reload
