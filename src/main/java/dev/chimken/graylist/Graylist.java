@@ -77,9 +77,11 @@ public final class Graylist extends JavaPlugin {
             throw new RuntimeException(e);
         }
 
-        this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            commands.registrar().register(new MonoCommand("graylist").build());
-        });
+        this.getLifecycleManager().registerEventHandler(
+                LifecycleEvents.COMMANDS,
+                commands ->
+                        commands.registrar().register(new MonoCommand("graylist").build())
+        );
     }
 
     @Override
