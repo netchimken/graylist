@@ -1,6 +1,5 @@
 package dev.chimken.graylist.managers;
 
-import dev.chimken.graylist.Graylist;
 import dev.chimken.graylist.services.Service;
 import org.bukkit.configuration.file.FileConfiguration;
 
