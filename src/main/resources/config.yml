@@ -9,13 +9,17 @@ services:
   default: "mojang"
 
   ## List of service configs
-  # By default, built-in services are disabled
+  # By default, built-in services (except Mojang) are disabled
   configs:
 
-    floodgate:
+    internal.mojang:
+      # enabled: false
+      # prefix:
+
+    internal.floodgate:
       #enabled: true
       prefix: "."
 
-    elyby:
+    internal.elyby:
       #enabled: true
       #prefix:

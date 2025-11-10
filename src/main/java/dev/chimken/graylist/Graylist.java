@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import dev.chimken.graylist.managers.ServiceManager;
 import dev.chimken.graylist.services.Elyby;
 import dev.chimken.graylist.services.Floodgate;
 import dev.chimken.graylist.services.Mojang;
@@ -23,57 +24,22 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
-import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class Graylist extends JavaPlugin {
-    private final HashMap<String, Service> services = new HashMap<>();
-    private final HashMap<String, String> prefixes = new HashMap<>();
-    private String default_service_id;
-
-    public void registerService(Service service) throws ServiceAlreadyExists {
-        final String id = service.getID();
-
-        if (services.containsKey(id))
-            throw new ServiceAlreadyExists(id);
-
-        FileConfiguration config = getConfig();
-        final String enabled_path = "services.configs." + id + ".enabled";
-
-        final int isEnabled = config.isBoolean(enabled_path)
-                ? config.getBoolean(enabled_path)
-                    ? 1 // Is enabled
-                    : 0 // Isn't enabled
-                : 2; // Not set (use default)
-
-        if (isEnabled == 0) {
-            getLogger().log(Level.INFO, id + " tried to register itself but was disabled in the config.");
-            return;
-        }
-
-        if (isEnabled == 2 && !service.getDefaultStatus()) {
-            getLogger().log(Level.INFO, "Disabled service: " + id);
-            return;
-        }
-
-        services.put(id, service);
-
-        String prefix = config.getString("services.configs." + id + ".prefix");
-        if (prefix != null) prefixes.put(id, prefix);
-
-        getLogger().log(Level.INFO, "Registered service: " + id);
-    }
+    private final FileConfiguration config = getConfig();
+    private final Logger logger = getLogger();
+    public final ServiceManager serviceManager = new ServiceManager(config, logger);
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        default_service_id = getConfig().getString("services.default");
-
         try {
-            registerService(new Mojang());
-            registerService(new Floodgate());
-            registerService(new Elyby());
-        } catch (ServiceAlreadyExists e) {
+            serviceManager.registerService(new Mojang(), true);
+            serviceManager.registerService(new Floodgate(), true);
+            serviceManager.registerService(new Elyby(), true);
+        } catch (ServiceManager.ServiceAlreadyExists e) {
             throw new RuntimeException(e);
         }
 
@@ -86,16 +52,7 @@ public final class Graylist extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        services.clear();
-        prefixes.clear();
-
-        default_service_id = null;
-    }
-
-    public static class ServiceAlreadyExists extends Exception {
-        ServiceAlreadyExists (String name) {
-            super("Failed to register '" + name + "' because it already exists");
-        }
+        serviceManager.clear();
     }
 
     private class MonoCommand extends LiteralArgumentBuilder<CommandSourceStack> {
@@ -112,7 +69,7 @@ public final class Graylist extends JavaPlugin {
                             .executes(ctx -> setNameWhitelisted(ctx, value))
                             .then(Commands.argument("service", StringArgumentType.word())
                                     .suggests((ctx, builder) -> {
-                                        services.forEach(
+                                        serviceManager.getServices().forEach(
                                                 (s, service) -> builder.suggest(s)
                                         );
 
@@ -136,7 +93,7 @@ public final class Graylist extends JavaPlugin {
                             .executes(ctx -> setUUIDWhitelisted(ctx, value))
                             .then(Commands.argument("service", StringArgumentType.word())
                                     .suggests((ctx, builder) -> {
-                                        services.forEach(
+                                        serviceManager.getServices().forEach(
                                                 (s, service) -> builder.suggest(s)
                                         );
 
@@ -208,11 +165,11 @@ public final class Graylist extends JavaPlugin {
                     .executes(ctx -> {
                         String flatList = String.join(
                                 ", ",
-                                services.values().stream().map(Service::getName).toList()
+                                serviceManager.getServices().values().stream().map(Service::getName).toList()
                         );
 
                         ctx.getSource().getSender().sendRichMessage("There are <count> service(s) available: <list>",
-                                Placeholder.component("count", Component.text(services.keySet().toArray().length)),
+                                Placeholder.component("count", Component.text(serviceManager.getServices().keySet().toArray().length)),
                                 Placeholder.component("list", Component.text(flatList))
                         );
 
@@ -299,17 +256,21 @@ public final class Graylist extends JavaPlugin {
             String name = ctx.getArgument("name", String.class);
 
             String service_id = getServiceID(ctx);
+
+            // If no service specified, fallback to prefix
             if (service_id == null) {
-                Map.Entry<String, String> prefix = prefixes.entrySet().stream()
+                Map.Entry<String, String> prefix = serviceManager.getPrefixes().entrySet().stream()
                         .filter(e -> name.startsWith(e.getValue()))
                         .findFirst()
                         .orElse(null);
 
-                if (prefix == null) service_id = default_service_id;
-                else service_id = prefix.getKey();
+                if (prefix != null) service_id = prefix.getKey();
             }
 
-            Service service = services.get(service_id);
+            // If no service or prefix specified, fallback to default
+            Service service = service_id != null
+                    ? serviceManager.getServices().get(service_id)
+                    : serviceManager.getDefaultService();
 
             final CommandSender sender = ctx.getSource().getSender();
 
@@ -332,9 +293,10 @@ public final class Graylist extends JavaPlugin {
         private int setUUIDWhitelisted (CommandContext<CommandSourceStack> ctx, boolean value) {
             UUID uuid = ctx.getArgument("uuid", UUID.class);
 
-            Service service = services.get(
-                    Optional.ofNullable(getServiceID(ctx)).orElse(default_service_id)
-            );
+            final String service_id = getServiceID(ctx);
+            Service service = service_id != null
+                ? serviceManager.getServices().get(service_id)
+                : serviceManager.getDefaultService();
 
             final CommandSender sender = ctx.getSource().getSender();
 
