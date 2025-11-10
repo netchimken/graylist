@@ -25,6 +25,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Graylist extends JavaPlugin {
@@ -61,14 +62,25 @@ public final class Graylist extends JavaPlugin {
         private RequiredArgumentBuilder<CommandSourceStack, String> whitelistCommand (boolean value) {
             return Commands.argument("user", StringArgumentType.string())
                     .suggests((ctx, builder) -> {
-                        Bukkit.getOnlinePlayers().stream()
-                                .map(Player::getName)
-                                .forEach(builder::suggest);
+                        final String operation = ctx.getInput();
 
-                        Bukkit.getOnlinePlayers().stream()
-                                .map(Player::getUniqueId)
-                                .map(UUID::toString)
-                                .forEach(builder::suggest);
+                        if (operation.startsWith("/graylist add")) {
+                            Bukkit.getOnlinePlayers().stream()
+                                    .map(Player::getName)
+                                    .forEach(builder::suggest);
+                        } else {
+                            Bukkit.getWhitelistedPlayers().stream()
+                                    .map(player -> {
+                                        final String name = player.getName();
+
+                                        if (Objects.equals(name, "<unknown>")) {
+                                            return player.getUniqueId().toString();
+                                        } else {
+                                            return name;
+                                        }
+                                    })
+                                    .forEach(builder::suggest);
+                        }
 
                         return builder.buildFuture();
                     })
