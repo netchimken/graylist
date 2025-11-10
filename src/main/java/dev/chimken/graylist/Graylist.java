@@ -25,7 +25,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.text.MessageFormat;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class Graylist extends JavaPlugin {
