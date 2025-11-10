@@ -30,8 +30,12 @@ public class Mojang extends Service {
 
     @Override
     public String findNameByUUID(UUID uuid) throws UserNotFound {
-        return fetchJSON("https://api.minecraftservices.com/minecraft/profile/lookup/" + uuid.toString())
-                .get("name")
-                .getAsString();
+        try {
+            return fetchJSON("https://api.minecraftservices.com/minecraft/profile/lookup/" + uuid.toString())
+                    .get("name")
+                    .getAsString();
+        } catch (RuntimeException e) {
+            throw new UserNotFound(uuid.toString());
+        }
     }
 }
