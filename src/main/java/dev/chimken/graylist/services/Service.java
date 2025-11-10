@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.text.MessageFormat;
 import java.util.HashSet;
@@ -15,15 +16,15 @@ import java.util.UUID;
 
 public abstract class Service {
     private final String SERVICE_ID;
-    private final String SERVICE_NAME;
+    private final String SERVICE_NAMESPACE;
     private final boolean DEFAULT_STATUS;
 
     public String getID() {
         return SERVICE_ID;
     }
 
-    public String getName() {
-        return SERVICE_NAME;
+    public @Nullable String getNamespace() {
+        return SERVICE_NAMESPACE;
     }
 
     public boolean getDefaultStatus() {
@@ -31,12 +32,12 @@ public abstract class Service {
     }
 
     public Service(String id, boolean enabled) {
-        this(id, id, enabled);
+        this(id, null, enabled);
     }
 
-    public Service(String id, String name, boolean enabled) {
+    public Service(String id, @Nullable String namespace, boolean enabled) {
         SERVICE_ID = id;
-        SERVICE_NAME = name;
+        SERVICE_NAMESPACE = namespace;
         DEFAULT_STATUS = enabled;
     }
 

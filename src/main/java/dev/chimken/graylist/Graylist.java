@@ -3,6 +3,7 @@ package dev.chimken.graylist;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import dev.chimken.graylist.managers.ServiceManager;
 import dev.chimken.graylist.services.Elyby;
@@ -23,6 +24,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -36,9 +38,9 @@ public final class Graylist extends JavaPlugin {
         saveDefaultConfig();
 
         try {
-            serviceManager.registerService(new Mojang(), true);
-            serviceManager.registerService(new Floodgate(), true);
-            serviceManager.registerService(new Elyby(), true);
+            serviceManager.registerService(new Mojang());
+            serviceManager.registerService(new Floodgate());
+            serviceManager.registerService(new Elyby());
         } catch (ServiceManager.ServiceAlreadyExists e) {
             throw new RuntimeException(e);
         }
@@ -57,50 +59,30 @@ public final class Graylist extends JavaPlugin {
 
     private class MonoCommand extends LiteralArgumentBuilder<CommandSourceStack> {
 
-        private LiteralArgumentBuilder<CommandSourceStack> nameCommand (boolean value) {
-            return Commands.literal("name")
-                    .then(Commands.argument("name", StringArgumentType.string())
+        private RequiredArgumentBuilder<CommandSourceStack, String> whitelistCommand (boolean value) {
+            return Commands.argument("user", StringArgumentType.string())
+                    .suggests((ctx, builder) -> {
+                        Bukkit.getOnlinePlayers().stream()
+                                .map(Player::getName)
+                                .forEach(builder::suggest);
+
+                        Bukkit.getOnlinePlayers().stream()
+                                .map(Player::getUniqueId)
+                                .map(UUID::toString)
+                                .forEach(builder::suggest);
+
+                        return builder.buildFuture();
+                    })
+                    .executes(ctx -> whitelistExecutor(ctx, value))
+                    .then(Commands.argument("service", StringArgumentType.word())
                             .suggests((ctx, builder) -> {
-                                Bukkit.getOnlinePlayers().stream()
-                                        .map(Player::getName)
-                                        .forEach(builder::suggest);
+                                serviceManager.getServices().forEach(
+                                        (s, service) -> builder.suggest(s)
+                                );
+
                                 return builder.buildFuture();
                             })
-                            .executes(ctx -> setNameWhitelisted(ctx, value))
-                            .then(Commands.argument("service", StringArgumentType.word())
-                                    .suggests((ctx, builder) -> {
-                                        serviceManager.getServices().forEach(
-                                                (s, service) -> builder.suggest(s)
-                                        );
-
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(ctx -> setNameWhitelisted(ctx, value))
-                            )
-                    );
-        }
-
-        private LiteralArgumentBuilder<CommandSourceStack> uuidCommand (boolean value) {
-            return Commands.literal("uuid")
-                    .then(Commands.argument("uuid", ArgumentTypes.uuid())
-                            .suggests((ctx, builder) -> {
-                                Bukkit.getOnlinePlayers().stream()
-                                        .map(Player::getUniqueId)
-                                        .map(UUID::toString)
-                                        .forEach(builder::suggest);
-                                return builder.buildFuture();
-                            })
-                            .executes(ctx -> setUUIDWhitelisted(ctx, value))
-                            .then(Commands.argument("service", StringArgumentType.word())
-                                    .suggests((ctx, builder) -> {
-                                        serviceManager.getServices().forEach(
-                                                (s, service) -> builder.suggest(s)
-                                        );
-
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(ctx -> setUUIDWhitelisted(ctx, value))
-                            )
+                            .executes(ctx -> whitelistExecutor(ctx, value))
                     );
         }
 
@@ -132,14 +114,12 @@ public final class Graylist extends JavaPlugin {
 
             this.then(Commands.literal("add")
                     .requires(ctx -> ctx.getSender().hasPermission("graylist.command.add"))
-                    .then(nameCommand(true))
-                    .then(uuidCommand(true))
+                    .then(whitelistCommand(true))
             );
 
             this.then(Commands.literal("remove")
                     .requires(ctx -> ctx.getSender().hasPermission("graylist.command.remove"))
-                    .then(nameCommand(false))
-                    .then(uuidCommand(false))
+                    .then(whitelistCommand(false))
             );
 
             this.then(Commands.literal("list")
@@ -165,7 +145,7 @@ public final class Graylist extends JavaPlugin {
                     .executes(ctx -> {
                         String flatList = String.join(
                                 ", ",
-                                serviceManager.getServices().values().stream().map(Service::getName).toList()
+                                serviceManager.getServices().values().stream().map(Service::getID).toList()
                         );
 
                         ctx.getSource().getSender().sendRichMessage("There are <count> service(s) available: <list>",
@@ -223,7 +203,11 @@ public final class Graylist extends JavaPlugin {
         }
 
         private Component setWhitelisted (Service service, UUID uuid, String name, boolean value) {
-            String prefix = getConfig().getString("services.configs." + service.getID() + ".prefix");
+            String prefix = getConfig().getString(MessageFormat.format(
+                    "services.configs.{0}.{1}.prefix",
+                    service.getNamespace(),
+                    service.getID()
+            ));
 
             return service.setWhitelisted(
                     uuid,
@@ -239,7 +223,11 @@ public final class Graylist extends JavaPlugin {
         }
 
         private Component setWhitelisted (Service service, String name, boolean value) throws Service.UserNotFound {
-            String prefix = getConfig().getString("services.configs." + service.getID() + ".prefix");
+            String prefix = getConfig().getString(MessageFormat.format(
+                    "services.configs.{0}.{1}.prefix",
+                    service.getNamespace(),
+                    service.getID()
+            ));
 
             String unlabeledName = prefix == null
                     ? name
@@ -252,55 +240,55 @@ public final class Graylist extends JavaPlugin {
             return setWhitelisted(service, uuid, name, value);
         }
 
-        private int setNameWhitelisted (CommandContext<CommandSourceStack> ctx, boolean value) {
-            String name = ctx.getArgument("name", String.class);
-
-            String service_id = getServiceID(ctx);
-
-            // If no service specified, fallback to prefix
-            if (service_id == null) {
-                Map.Entry<String, String> prefix = serviceManager.getPrefixes().entrySet().stream()
-                        .filter(e -> name.startsWith(e.getValue()))
-                        .findFirst()
-                        .orElse(null);
-
-                if (prefix != null) service_id = prefix.getKey();
-            }
-
-            // If no service or prefix specified, fallback to default
-            Service service = service_id != null
-                    ? serviceManager.getServices().get(service_id)
-                    : serviceManager.getDefaultService();
-
-            final CommandSender sender = ctx.getSource().getSender();
-
-            sender.sendRichMessage("Finding <name> via <service>...",
-                    Placeholder.component("name", Component.text(name)),
-                    Placeholder.component("service", Component.text(service.getName()))
-            );
+        private int whitelistExecutor (CommandContext<CommandSourceStack> ctx, boolean value) {
+            final String ref = ctx.getArgument("user", String.class);
 
             try {
-                sender.sendMessage(setWhitelisted(service, name, value));
-            } catch (Service.UserNotFound e) {
-                sender.sendRichMessage("Couldn't find <name>",
-                        Placeholder.component("name", Component.text(name))
+                final UUID uuid = UUID.fromString(ref);
+
+                final String service_id = getServiceID(ctx);
+                Service service = service_id != null
+                        ? serviceManager.getServices().get(service_id)
+                        : serviceManager.getDefaultService();
+
+                final CommandSender sender = ctx.getSource().getSender();
+
+                sender.sendMessage(setWhitelisted(service, uuid, value));
+            } catch (IllegalArgumentException __) {
+                final String name = ref;
+
+                String service_id = getServiceID(ctx);
+
+                // If no service specified, fallback to prefix
+                if (service_id == null) {
+                    Map.Entry<String, String> prefix = serviceManager.getPrefixes().entrySet().stream()
+                            .filter(entry -> name.startsWith(entry.getValue()))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (prefix != null) service_id = prefix.getKey();
+                }
+
+                // If no service or prefix specified, fallback to default
+                Service service = service_id != null
+                        ? serviceManager.getServices().get(service_id)
+                        : serviceManager.getDefaultService();
+
+                final CommandSender sender = ctx.getSource().getSender();
+
+                sender.sendRichMessage("Finding <name> via <service>...",
+                        Placeholder.component("name", Component.text(name)),
+                        Placeholder.component("service", Component.text(service.getID()))
                 );
+
+                try {
+                    sender.sendMessage(setWhitelisted(service, name, value));
+                } catch (Service.UserNotFound e) {
+                    sender.sendRichMessage("Couldn't find <name>",
+                            Placeholder.component("name", Component.text(name))
+                    );
+                }
             }
-
-            return Command.SINGLE_SUCCESS;
-        }
-
-        private int setUUIDWhitelisted (CommandContext<CommandSourceStack> ctx, boolean value) {
-            UUID uuid = ctx.getArgument("uuid", UUID.class);
-
-            final String service_id = getServiceID(ctx);
-            Service service = service_id != null
-                ? serviceManager.getServices().get(service_id)
-                : serviceManager.getDefaultService();
-
-            final CommandSender sender = ctx.getSource().getSender();
-
-            sender.sendMessage(setWhitelisted(service, uuid, value));
 
             return Command.SINGLE_SUCCESS;
         }

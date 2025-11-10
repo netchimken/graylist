@@ -4,10 +4,11 @@ import dev.chimken.graylist.Util;
 import java.util.*;
 
 import static dev.chimken.graylist.Util.fetchJSON;
+import static dev.chimken.graylist.managers.ServiceManager.INTERNAL_NAMESPACE;
 
 public class Mojang extends Service {
     public Mojang () {
-        super("mojang", "Mojang", true);
+        super("mojang", INTERNAL_NAMESPACE, true);
     }
 
     @Override
@@ -15,12 +16,16 @@ public class Mojang extends Service {
         UUID knownUUID = findKnownUUIDByName(name);
         if (knownUUID != null) return knownUUID;
 
-        final String id = fetchJSON("https://api.mojang.com/users/profiles/minecraft/" + name)
-                .get("id")
-                .getAsString();
+        try {
+            final String id = fetchJSON("https://api.mojang.com/users/profiles/minecraft/" + name)
+                    .get("id")
+                    .getAsString();
 
-        // Use expandUUIDString because UUID is collapsed initially
-        return UUID.fromString(Util.expandUUIDString(id));
+            // Use expandUUIDString because UUID is collapsed initially
+            return UUID.fromString(Util.expandUUIDString(id));
+        } catch (RuntimeException e) {
+            throw new UserNotFound(name);
+        }
     }
 
     @Override

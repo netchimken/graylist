@@ -5,10 +5,11 @@ import dev.chimken.graylist.Util;
 import java.util.UUID;
 
 import static dev.chimken.graylist.Util.fetchJSON;
+import static dev.chimken.graylist.managers.ServiceManager.INTERNAL_NAMESPACE;
 
 public class Elyby extends Service {
     public Elyby() {
-        super("elyby", "ely.by", false);
+        super("elyby", INTERNAL_NAMESPACE, false);
     }
 
     @Override

@@ -38,11 +38,11 @@ commands:
     children:
       add:
         description: Add a user to the whitelist
-        usage: /graylist add <name|uuid> <identifier> [service]
+        usage: /graylist add <username|uuid> [service]
         permission: graylist.command.add
       remove:
         description: Remove a user from the whitelist
-        usage: /graylist remove <name|uuid> <identifier> [service]
+        usage: /graylist remove <username|uuid> [service]
         permission: graylist.command.remove
       on:
         description: Enable the whitelist

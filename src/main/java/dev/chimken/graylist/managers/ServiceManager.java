@@ -3,8 +3,10 @@ package dev.chimken.graylist.managers;
 import dev.chimken.graylist.services.Service;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -15,6 +17,8 @@ public class ServiceManager {
     private final HashMap<String, Service> services = new HashMap<>();
     private final HashMap<String, String> prefixes = new HashMap<>();
     private String default_service_id;
+
+    public static final String INTERNAL_NAMESPACE = "internal";
 
     public Service getDefaultService() {
         return services.get(default_service_id);
@@ -42,17 +46,15 @@ public class ServiceManager {
     }
 
     public void registerService(Service service) throws ServiceAlreadyExists {
-        registerService(service, false);
-    }
-
-    public void registerService(Service service, boolean internal) throws ServiceAlreadyExists {
         final String id = service.getID();
 
         if (services.containsKey(id))
             throw new ServiceAlreadyExists(id);
 
-        final String CONFIG_NAMESPACE = internal
-                ? "services.configs.internal."
+        final String namespace = service.getNamespace();
+
+        final String CONFIG_NAMESPACE = namespace != null
+                ? "services.configs." + namespace + "."
                 : "services.configs.";
 
         final String enabled_path = CONFIG_NAMESPACE + id + ".enabled";
@@ -68,11 +70,10 @@ public class ServiceManager {
                         ||
                         (isEnabled == 2 && !service.getDefaultStatus())
         ) {
-            if (!internal) logger.log(
+            if (!Objects.equals(namespace, INTERNAL_NAMESPACE)) logger.log(
                     Level.INFO,
                     MessageFormat.format(
-                            "Disabled service: {0} ({1}/external)",
-                            service.getName(),
+                            "Disabled service: {0} (external)",
                             service.getID()
                     )
             );
@@ -88,10 +89,9 @@ public class ServiceManager {
         logger.log(
                 Level.INFO,
                 MessageFormat.format(
-                        "Registered service: {0} ({1}/{2})",
-                        service.getName(),
+                        "Registered service: {0} ({1})",
                         service.getID(),
-                        internal ? "internal" : "external"
+                        Objects.equals(namespace, INTERNAL_NAMESPACE) ? "internal" : "external"
                 )
         );
     }

@@ -1,16 +1,15 @@
 package dev.chimken.graylist.services;
 
-import dev.chimken.graylist.Util;
-
 import java.util.UUID;
 
 import static dev.chimken.graylist.Util.fetchJSON;
+import static dev.chimken.graylist.managers.ServiceManager.INTERNAL_NAMESPACE;
 
 // TODO: Don't rely on mcprofile.io; implement Xbox API instead
 
 public class Floodgate extends Service {
     public Floodgate() {
-        super("floodgate", "Floodgate", false);
+        super("floodgate", INTERNAL_NAMESPACE, false);
     }
 
     @Override
