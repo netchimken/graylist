@@ -3,7 +3,6 @@ package dev.chimken.graylist.managers;
 import dev.chimken.graylist.services.Service;
 import org.bukkit.configuration.file.FileConfiguration;
 
-import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Objects;

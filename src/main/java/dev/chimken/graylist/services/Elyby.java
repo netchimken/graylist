@@ -30,7 +30,7 @@ public class Elyby extends Service {
     }
 
     @Override
-    public String findNameByUUID(UUID uuid) throws UserNotFound {
+    public String findNameByUUID(UUID uuid) {
         return "<unknown>";
     }
 }
