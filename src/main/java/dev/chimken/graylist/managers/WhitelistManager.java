@@ -58,8 +58,4 @@ public class WhitelistManager {
             throw new RuntimeException(e);
         }
     }
-
-    public void setWhitelisted(UUID uuid, boolean value) {
-        setWhitelisted(uuid, uuid.toString(), value);
-    }
 }

@@ -13,7 +13,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
