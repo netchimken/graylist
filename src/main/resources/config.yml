@@ -2,11 +2,15 @@
 # Graylist Config
 # ------------------
 
+## Plugin Language
+# Default is "en-US"
+lang: en-US
+
 ## Service Configuration
 services:
 
   ## Default service to use when a service isn't specified.
-  default: "mojang"
+  default: mojang
 
   ## List of service configs
   # By default, built-in services (except Mojang) are disabled

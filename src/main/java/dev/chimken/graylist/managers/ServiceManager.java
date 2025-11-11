@@ -1,6 +1,7 @@
 package dev.chimken.graylist.managers;
 
-import dev.chimken.graylist.services.Service;
+import dev.chimken.graylist.abstracts.GraylistService;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.text.MessageFormat;
@@ -13,17 +14,18 @@ public class ServiceManager {
     private final FileConfiguration config;
     private final Logger logger;
 
-    private final HashMap<String, Service> services = new HashMap<>();
+    private final HashMap<String, GraylistService> services = new HashMap<>();
     private final HashMap<String, String> prefixes = new HashMap<>();
     private String default_service_id;
 
     public static final String INTERNAL_NAMESPACE = "internal";
 
-    public Service getDefaultService() {
+    public String getDefaultServiceID() { return default_service_id; }
+    public GraylistService getDefaultService() {
         return services.get(default_service_id);
     }
 
-    public HashMap<String, Service> getServices() {
+    public HashMap<String, GraylistService> getServices() {
         return services;
     }
 
@@ -44,31 +46,29 @@ public class ServiceManager {
         default_service_id = config.getString("services.default");
     }
 
-    public void registerService(Service service) throws ServiceAlreadyExists {
+    public void register(GraylistService service) throws ServiceAlreadyExists {
         final String id = service.getID();
 
         if (services.containsKey(id))
             throw new ServiceAlreadyExists(id);
 
         final String namespace = service.getNamespace();
+        final String service_config_path = service.getConfigPath();
 
-        final String CONFIG_NAMESPACE = namespace != null
-                ? "services.configs." + namespace + "."
-                : "services.configs.";
+        ConfigurationSection service_config = config.getConfigurationSection(service_config_path);
+        if (service_config == null) {
+            service_config = config.createSection(service_config_path);
+            service_config.set("enabled", true);
+        }
 
-        final String enabled_path = CONFIG_NAMESPACE + id + ".enabled";
-
-        final int isEnabled = config.isBoolean(enabled_path)
-                ? config.getBoolean(enabled_path)
-                ? 1 // Is enabled
-                : 0 // Isn't enabled
+        final int isEnabled = service_config.isBoolean("enabled")
+                ? service_config.getBoolean("enabled")
+                    ? 1 // Is enabled
+                    : 0 // Isn't enabled
                 : 2; // Not set (use default)
 
-        if (
-                isEnabled == 0
-                        ||
-                        (isEnabled == 2 && !service.getDefaultStatus())
-        ) {
+        // If disabled (in config or by default)
+        if (isEnabled == 0 || (isEnabled == 2 && !service.getDefaultStatus())) {
             if (!Objects.equals(namespace, INTERNAL_NAMESPACE)) logger.log(
                     Level.INFO,
                     MessageFormat.format(
@@ -80,9 +80,10 @@ public class ServiceManager {
             return;
         }
 
+        service.setConfig(service_config);
         services.put(id, service);
 
-        String prefix = config.getString(CONFIG_NAMESPACE + id + ".prefix");
+        String prefix = service_config.getString("prefix");
         if (prefix != null) prefixes.put(id, prefix);
 
         logger.log(
